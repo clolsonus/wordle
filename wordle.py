@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 
+import argparse
 import numpy as np
-import random
 
 word_file = "/usr/share/dict/words"
-num_chars = 5
 
-include_pattern = "_a_or"
-anti_patterns = [ "rv", "", "", "", "" ]
-include_letters = "aorv"
-exclude_letters = "beisplmn"
-rr = 100                        # score randomization range
+ap = argparse.ArgumentParser(description="Help generate wordle guesses.")
+ap.add_argument('--max-repeats', type=int, default=2, help='maximum times a letter is allowed to repeat.')
+ap.add_argument('--include', type=str, default="", help='list of letters to be included.')
+ap.add_argument('--exclude', type=str, default="", help='list of letters to be excluded.')
+ap.add_argument('--pattern', type=str, default="_____", help='pattern of known characters in their proper position, use underscore for unknown positions.')
+args = ap.parse_args()
+
+num_chars = 5
+anti_patterns = [ "", "", "", "", "" ]
 
 words = {}
 words_no_repeat = []
@@ -25,18 +28,17 @@ with open(word_file) as f:
             continue
         words[word] = True
 
-# build letter histogram and list of words with no repeating letters
+# build letter histogram, and also a list of words with no repeating letters
 hist = [0] * 26
 for word in words:
-    used = [False] * 26 
+    used = [0] * 26 
     repeat = False
     for c in word:
         index = ord(c) - ord('a')
         hist[index] += 1
-        if used[index]:
+        used[index] += 1
+        if np.max(used) > args.max_repeats:
             repeat = True
-        else:
-            used[index] = True
     if not repeat:
         words_no_repeat.append(word)
 
@@ -49,17 +51,17 @@ unique_combos = {}
 for word in words_no_repeat:
     for c in word:
         include_test = True
-        for ic in include_letters:
+        for ic in args.include:
             if ic not in word:
                 include_test = False
                 break
         exclude_test = True
-        for ec in exclude_letters:
+        for ec in args.exclude:
             if ec in word:
                 exclude_test = False
                 break
         pattern_test = True
-        for i, pc in enumerate(include_pattern):
+        for i, pc in enumerate(args.pattern):
             if pc.isalpha() and word[i] != pc:
                 pattern_test = False
         anti_pattern_test = True
@@ -74,17 +76,28 @@ for word in words_no_repeat:
             unique_combos[unique].append(word)
         words_filtered.append(word)
             
-# score non repeating words
-random.seed()
+# score words with no repeating letters
 scores_filtered = []
 for word in unique_combos:
-    #score = random.randrange(rr)
     score = 0
     for c in word:
         index = ord(c) - ord('a')
         score += hist[index]
     scores_filtered.append(score)
-
 idx = np.argsort(-np.array(scores_filtered))
+print("Unique letter combinations:")
 for i in idx:
     print( scores_filtered[i], unique_combos[list(unique_combos)[i]] )
+
+# score the whole word list
+scores_filtered = []
+for word in words_filtered:
+    score = 0
+    for c in word:
+        index = ord(c) - ord('a')
+        score += hist[index]
+    scores_filtered.append(score)
+idx = np.argsort(-np.array(scores_filtered))
+print("All words, with repeated letters:")
+for i in idx:
+    print( scores_filtered[i], words_filtered[i] )
