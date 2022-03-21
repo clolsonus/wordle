@@ -12,7 +12,7 @@ ap.add_argument('--pattern', type=str, default=".....", help='pattern of known c
 args = ap.parse_args()
 
 num_chars = 5
-anti_patterns = [ "", "re", "ir", "e", "" ]
+anti_patterns = [ "", "", "", "", "" ]
 
 words = {}
 words_no_repeat = []
